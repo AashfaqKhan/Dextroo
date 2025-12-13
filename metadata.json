@@ -1,0 +1,5 @@
+{
+  "name": "Academy Portal & AI Tools",
+  "description": "A comprehensive student portal featuring registration, fees submission, and advanced AI tools for learning including Chat, Image Analysis, and Text-to-Speech powered by Gemini.",
+  "requestFramePermissions": []
+}
