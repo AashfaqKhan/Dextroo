@@ -1,14 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-// 1. Go to https://supabase.com/dashboard/projects
-// 2. Create a new project (No credit card required)
-// 3. Go to Project Settings -> API
-// 4. Paste the 'URL' and 'anon' public key below
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const SUPABASE_URL = ''; // e.g. https://xyz.supabase.co
-const SUPABASE_KEY = ''; // e.g. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error("Supabase env variables are missing");
+}
 
-// If keys are missing, the app will fall back to LocalStorage automatically.
-export const supabase = (SUPABASE_URL && SUPABASE_KEY) 
-  ? createClient(SUPABASE_URL, SUPABASE_KEY) 
-  : null;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
