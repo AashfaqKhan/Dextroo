@@ -396,9 +396,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                       </label>
                       <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-white hover:border-indigo-400 transition-all cursor-pointer group">
                         <div className="space-y-1 text-center relative w-full">
+                          {/* Hidden file input */}
                           <input
                             type="file"
                             accept="image/*"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
