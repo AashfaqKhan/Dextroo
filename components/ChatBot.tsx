@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Message } from '../types';
-import { streamChatResponse } from '../services/geminiService';
-import { Send, Bot, User as UserIcon, Loader2, Trash2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown'; // Assuming standard environment allows this, otherwise fallback to simple text
+import React, { useState, useRef, useEffect } from "react";
+import { Message } from "../types";
+import { streamChatResponse } from "../services/geminiService";
+import { Send, Bot, User as UserIcon, Loader2, Trash2 } from "lucide-react";
+import ReactMarkdown from "react-markdown"; // Assuming standard environment allows this, otherwise fallback to simple text
 
 interface ChatBotProps {
   userId: string;
@@ -10,14 +10,14 @@ interface ChatBotProps {
 
 const ChatBot: React.FC<ChatBotProps> = ({ userId }) => {
   const STORAGE_KEY = `academy_chat_history_${userId}`;
-  
+
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         // We need to revive the date string back to a Date object
         return JSON.parse(saved, (key, value) => {
-          if (key === 'timestamp') return new Date(value);
+          if (key === "timestamp") return new Date(value);
           return value;
         });
       }
@@ -25,20 +25,22 @@ const ChatBot: React.FC<ChatBotProps> = ({ userId }) => {
       console.error("Failed to load chat history", error);
     }
     // Default initial state if nothing found
-    return [{ 
-      id: '1', 
-      role: 'model', 
-      text: 'Hello! I am your AI academic assistant. How can I help you today?', 
-      timestamp: new Date() 
-    }];
+    return [
+      {
+        id: "1",
+        role: "model",
+        text: "Hello! I am your AI academic assistant. How can I help you today?",
+        timestamp: new Date(),
+      },
+    ];
   });
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -52,11 +54,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ userId }) => {
 
   const handleClearHistory = () => {
     if (window.confirm("Are you sure you want to clear your chat history?")) {
-      const initialMsg: Message = { 
-        id: Date.now().toString(), 
-        role: 'model', 
-        text: 'Hello! I am your AI academic assistant. How can I help you today?', 
-        timestamp: new Date() 
+      const initialMsg: Message = {
+        id: Date.now().toString(),
+        role: "model",
+        text: "Hello! I am your AI academic assistant. How can I help you today?",
+        timestamp: new Date(),
       };
       setMessages([initialMsg]);
       localStorage.removeItem(STORAGE_KEY);
@@ -66,57 +68,77 @@ const ChatBot: React.FC<ChatBotProps> = ({ userId }) => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // FIX 1: Explicitly type userMsg
     const userMsg: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       text: input,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    // 1. Add user message immediately
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
     setIsLoading(true);
 
-    // Prepare history for Gemini
-    const history = messages.map(m => ({
+    // 2. OPTIMIZATION: Limit the history sent to the API
+    // Get only the last 10 messages (5 turns) for context
+    const recentMessages = messages.slice(-5);
+
+    // Prepare history for Gemini: Combine recent messages + the new user message
+    const history = [...recentMessages, userMsg].map((m) => ({
       role: m.role,
-      parts: [{ text: m.text }]
+      parts: [{ text: m.text }],
     }));
 
+    // --- API Call ---
     try {
-        let fullResponse = "";
-        const botMsgId = (Date.now() + 1).toString();
-        
-        // Add placeholder for bot message
-        setMessages(prev => [...prev, {
-            id: botMsgId,
-            role: 'model',
-            text: '',
-            timestamp: new Date()
-        }]);
+      let fullResponse = "";
+      const botMsgId = (Date.now() + 1).toString();
 
-        await streamChatResponse('gemini-3-pro-preview', history, userMsg.text, (chunk) => {
-             fullResponse += chunk;
-             setMessages(prev => prev.map(m => 
-                m.id === botMsgId ? { ...m, text: fullResponse } : m
-             ));
-        });
+      // FIX 2: Explicitly type the bot placeholder message
+      const botPlaceholder: Message = {
+        id: botMsgId,
+        role: "model",
+        text: "",
+        timestamp: new Date(),
+      };
 
+      // Add placeholder for bot message
+      setMessages((prev) => [...prev, botPlaceholder]);
+
+      // 3. USE THE RECOMMENDED MODEL
+      await streamChatResponse(
+        "gemini-2.5-flash",
+        history,
+        userMsg.text,
+        (chunk) => {
+          fullResponse += chunk;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === botMsgId ? { ...m, text: fullResponse } : m
+            )
+          );
+        }
+      );
     } catch (error) {
-       console.error(error);
-       setMessages(prev => [...prev, {
-         id: Date.now().toString(),
-         role: 'model',
-         text: "I'm sorry, I encountered an error. Please try again.",
-         timestamp: new Date()
-       }]);
+      console.error(error); // Keep original error log
+      // FIX 3: Explicitly type the error message
+      const errorMsg: Message = {
+        id: Date.now().toString(),
+        role: "model",
+        text: "I'm sorry, I encountered an error. Please try again.",
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -127,9 +149,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ userId }) => {
       <div className="bg-indigo-50 p-4 border-b border-indigo-100 flex items-center justify-between">
         <div className="flex items-center">
           <Bot className="w-6 h-6 text-indigo-600 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-800">Academic AI Assistant</h2>
+          <h2 className="text-lg font-semibold text-gray-800">
+            Academic AI Assistant
+          </h2>
         </div>
-        <button 
+        <button
           onClick={handleClearHistory}
           className="p-2 text-indigo-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           title="Clear Chat History"
@@ -142,40 +166,44 @@ const ChatBot: React.FC<ChatBotProps> = ({ userId }) => {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${
+              msg.role === "user" ? "justify-end" : "justify-start"
+            }`}
           >
             <div
               className={`flex max-w-[80%] ${
-                msg.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-l-2xl rounded-tr-2xl'
-                  : 'bg-gray-100 text-gray-800 rounded-r-2xl rounded-tl-2xl'
+                msg.role === "user"
+                  ? "bg-indigo-600 text-white rounded-l-2xl rounded-tr-2xl"
+                  : "bg-gray-100 text-gray-800 rounded-r-2xl rounded-tl-2xl"
               } p-4 shadow-sm`}
             >
               <div className="mr-2 mt-1">
-                {msg.role === 'user' ? (
-                   <div className="w-6 h-6 rounded-full bg-indigo-400 flex items-center justify-center">
-                      <UserIcon className="w-4 h-4 text-white" />
-                   </div>
+                {msg.role === "user" ? (
+                  <div className="w-6 h-6 rounded-full bg-indigo-400 flex items-center justify-center">
+                    <UserIcon className="w-4 h-4 text-white" />
+                  </div>
                 ) : (
-                   <div className="w-6 h-6 rounded-full bg-indigo-200 flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-indigo-700" />
-                   </div>
+                  <div className="w-6 h-6 rounded-full bg-indigo-200 flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-indigo-700" />
+                  </div>
                 )}
               </div>
               <div className="prose prose-sm max-w-none">
-                 {/* Simple text rendering for robustness in this prompt context, or markdown if possible */}
-                 <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                {/* Simple text rendering for robustness in this prompt context, or markdown if possible */}
+                <p className="whitespace-pre-wrap leading-relaxed">
+                  {msg.text}
+                </p>
               </div>
             </div>
           </div>
         ))}
-        {isLoading && messages[messages.length - 1]?.role === 'user' && (
-            <div className="flex justify-start">
-                 <div className="bg-gray-100 text-gray-800 rounded-r-2xl rounded-tl-2xl p-4 shadow-sm flex items-center">
-                    <Loader2 className="w-4 h-4 animate-spin mr-2 text-indigo-600" />
-                    <span className="text-sm text-gray-500">Thinking...</span>
-                 </div>
+        {isLoading && messages[messages.length - 1]?.role === "user" && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 text-gray-800 rounded-r-2xl rounded-tl-2xl p-4 shadow-sm flex items-center">
+              <Loader2 className="w-4 h-4 animate-spin mr-2 text-indigo-600" />
+              <span className="text-sm text-gray-500">Thinking...</span>
             </div>
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>

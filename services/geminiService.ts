@@ -17,7 +17,8 @@ export const streamChatResponse = async (
       model: modelName,
       history: history,
       config: {
-        systemInstruction: "You are a helpful and knowledgeable academic assistant for students.",
+        systemInstruction:
+          "You are a helpful and knowledgeable academic assistant for students.",
       },
     });
 
@@ -37,13 +38,17 @@ export const streamChatResponse = async (
 /**
  * Analyze Image
  */
-export const analyzeImage = async (base64Image: string, mimeType: string, prompt: string) => {
+export const analyzeImage = async (
+  base64Image: string,
+  mimeType: string,
+  prompt: string
+) => {
   try {
     // Remove header if present (e.g., "data:image/png;base64,")
-    const cleanBase64 = base64Image.split(',')[1];
+    const cleanBase64 = base64Image.split(",")[1];
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           {
@@ -77,18 +82,20 @@ export const generateSpeech = async (text: string): Promise<AudioBuffer> => {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
+            prebuiltVoiceConfig: { voiceName: "Kore" },
           },
         },
       },
     });
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const base64Audio =
+      response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) {
       throw new Error("No audio data received");
     }
 
-    const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+    const outputAudioContext = new (window.AudioContext ||
+      (window as any).webkitAudioContext)({
       sampleRate: 24000,
     });
 
